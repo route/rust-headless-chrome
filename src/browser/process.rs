@@ -52,14 +52,23 @@ impl Drop for TemporaryProcess {
 /// binary on the system, use an available port for debugging, and start in headless mode.
 #[derive(Builder)]
 pub struct LaunchOptions {
+    /// Determintes whether to run headless version of the browser. Defaults to true.
     #[builder(default = "true")]
     headless: bool,
 
+    /// Launch the browser with a specific debugging port.
     #[builder(default = "None")]
     port: Option<u16>,
 
+    /// Path for Chrome or Chromium.
+    ///
+    /// If unspecified, the create will try to automatically detect a suitable binary.
     #[builder(default = "self.default_executable()?")]
     path: std::path::PathBuf,
+
+    /// A list of Chrome extensions to load.
+    #[builder(default)]
+    extensions: Vec<std::path::PathBuf>,
 }
 
 impl LaunchOptionsBuilder {
@@ -169,6 +178,14 @@ impl Process {
         if launch_options.headless {
             args.extend(&["--headless"]);
         }
+
+        let extension_args: Vec<String> = launch_options
+            .extensions
+            .iter()
+            .map(|e| format!("--load-extension={}", e.display()))
+            .collect();
+
+        args.extend(extension_args.iter().map(|s| s.as_str()));
 
         let process = TemporaryProcess(
             Command::new(&launch_options.path)
